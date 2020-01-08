@@ -5,3 +5,4 @@ authors = ["joseildo filho <joseildofilho@yahoo.com.br>"]
 edition = "2018"
 
 [dependencies]
+bit-long-vec = "0.2.1"
