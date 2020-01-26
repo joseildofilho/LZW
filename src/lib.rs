@@ -29,29 +29,30 @@ impl LZWDict {
         }
         vec.sort();
         for (index, c) in vec.drain(0..).enumerate() {
+            println!("Inserting: {:?}", c);
             &self.insert(index, vec![c]);
         }
     }
     fn get_index(&self, symbol: Vec<u8>) -> Option<&usize> {
         self.lexeme_index.get(&symbol)
     }
-    fn get_maximum_match(&self, slice:&[u8]) -> usize {
-        let mut aux:usize = 0;
+    fn get_maximum_match(&mut self, slice:&[u8]) -> [usize; 2] {
+        let mut pointer:usize = 0;
+        let mut offset :usize = 0;
         for i in 0..slice.len() {
             let aux_slice = &slice[..i+1];
             match self.get_index(aux_slice.to_vec()) {
                 Some(x) => {
-                    println!("Result: {}", x);
-                    aux = *x;
+                    offset = aux_slice.len();
+                    pointer = *x;
                 }, 
                 None => {
-                    println!("Found A Hole: {}", aux);
-                    println!("Current Slice: {:?}", aux_slice);
+                    self.insert(self.index_lexeme.len(), aux_slice.to_vec());
                     break;
                 }
             }
         }
-        return aux
+        [pointer, offset]
     }
 }
 
@@ -73,13 +74,15 @@ impl<'lifecycle> LZW<'lifecycle> for LZWData<'lifecycle> {
         let mut dict = LZWDict::new();
         dict.find_n_fill_inital_alph(&msg);
 
-        let mut index:usize = 0;
-        while index < msg.len() {
-            let slice: &[u8] = &msg[index..];
-            codedmsg.set(index, dict.get_maximum_match(slice) as u64);
-            index += 1;
+        let mut index  :usize = 0;
+        let mut pointer:usize = 0;
+        while pointer < msg.len() {
+            let slice: &[u8] = &msg[pointer..];
+            let result = dict.get_maximum_match(slice);
+            codedmsg.set(index, result[0] as u64);
+            pointer += result[1];
+            index += 1
         }
-
         LZWData {
             dict: dict,
             msg: msg,

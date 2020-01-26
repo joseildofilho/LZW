@@ -77,4 +77,39 @@ mod tests {
         assert_eq!(compressor.msg_ref(), msg);
         assert_eq!(compressor.codedmsg_ref(), &bits)
     }
+    #[test]
+    fn test_lwz_repeat_3() {
+        let msg: &[u8] = "abbbb".as_bytes();
+        let k: u8 = 4;
+        let compressor:LZWData = LZW::encode(msg, k);
+        
+        let mut bits = BitLongVec::with_fixed_capacity(msg.len(), k);
+        bits.set(1,1);
+        bits.set(2,3);
+        bits.set(3,1);
+
+        assert_eq!(compressor.msg_ref(), msg);
+        assert_eq!(compressor.codedmsg_ref(), &bits)
+    }
+
+    #[test]
+    fn test_lzw_abracadabra() {
+        let msg: &[u8] = "abracadabra".as_bytes();
+        let k: u8 = 4;
+        let compressor:LZWData = LZW::encode(msg, k);
+
+        let mut bits = BitLongVec::with_fixed_capacity(msg.len(), k);
+        bits.set(1, 1);
+        bits.set(2, 4);
+        bits.set(3, 0);
+        bits.set(4, 2);
+        bits.set(5, 0);
+        bits.set(6, 3);
+        bits.set(7, 5);
+        bits.set(8, 7);
+
+        assert_eq!(compressor.msg_ref(), msg);
+        assert_eq!(compressor.codedmsg_ref(), &bits);
+
+    }
 }
