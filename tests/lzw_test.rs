@@ -3,6 +3,7 @@ mod tests {
     use lzw::{LZW, LZWData};
     use std::collections::HashMap;
     use bit_long_vec::BitLongVec;
+    use serde_json::Value;
     #[test]
     fn test_lwz_empty() {
         let msg: &[u8] = "".as_bytes();
@@ -11,7 +12,6 @@ mod tests {
 
         let bits = BitLongVec::with_fixed_capacity(msg.len(), k);
 
-        assert_eq!(compressor.msg_ref(), msg);
         assert_eq!(compressor.codedmsg_ref(), &bits)
         
     }
@@ -23,7 +23,6 @@ mod tests {
         
         let mut bits = BitLongVec::with_fixed_capacity(msg.len(), k);
 
-        assert_eq!(compressor.msg_ref(), msg);
         assert_eq!(compressor.codedmsg_ref(), &bits)
     }
     #[test]
@@ -35,7 +34,6 @@ mod tests {
         let mut bits = BitLongVec::with_fixed_capacity(msg.len(), k);
         bits.set(1,1);
 
-        assert_eq!(compressor.msg_ref(), msg);
         assert_eq!(compressor.codedmsg_ref(), &bits)
     }
     #[test]
@@ -48,7 +46,6 @@ mod tests {
         bits.set(1,1);
         bits.set(2,2);
 
-        assert_eq!(compressor.msg_ref(), msg);
         assert_eq!(compressor.codedmsg_ref(), &bits)
     }
     #[test]
@@ -61,7 +58,6 @@ mod tests {
         bits.set(1,1);
         bits.set(2,1);
 
-        assert_eq!(compressor.msg_ref(), msg);
         assert_eq!(compressor.codedmsg_ref(), &bits)
     }
     #[test]
@@ -74,7 +70,6 @@ mod tests {
         bits.set(1,1);
         bits.set(2,3);
 
-        assert_eq!(compressor.msg_ref(), msg);
         assert_eq!(compressor.codedmsg_ref(), &bits)
     }
     #[test]
@@ -88,7 +83,6 @@ mod tests {
         bits.set(2,3);
         bits.set(3,1);
 
-        assert_eq!(compressor.msg_ref(), msg);
         assert_eq!(compressor.codedmsg_ref(), &bits)
     }
 
@@ -108,8 +102,19 @@ mod tests {
         bits.set(7, 5);
         bits.set(8, 7);
 
-        assert_eq!(compressor.msg_ref(), msg);
         assert_eq!(compressor.codedmsg_ref(), &bits);
+    }
+    #[test]
+    fn test_lzw_serialize() {
+        let msg: &[u8] = "abb".as_bytes();
+        let k: u8 = 4;
+        let compressor:LZWData = LZW::encode(msg, k);
 
+        let serialized = serde_json::to_string(&compressor);
+        println!("serialized = {:?}", serialized);
+    }
+    #[test]
+    fn test_lzw_decode() {
+        
     }
 }

@@ -5,4 +5,7 @@ authors = ["joseildo filho <joseildofilho@yahoo.com.br>"]
 edition = "2018"
 
 [dependencies]
-bit-long-vec = {git = "https://github.com/eihwaz/bit-long-vec"}
+bit-long-vec = {git = "https://github.com/joseildofilho/bit-long-vec"}
+serde = {version="1.0.104", features=["derive"]}
+serde_json = "1.0.45"
+serde_yaml = "0.8.11"
