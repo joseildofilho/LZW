@@ -4,8 +4,8 @@ use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct LZWDict {
-    index_lexeme: HashMap<usize, Vec<u8>>,
-    lexeme_index: HashMap<Vec<u8>, usize>
+    index_lexeme: HashMap<usize, Vec<u64>>,
+    lexeme_index: HashMap<Vec<u64>, usize>
 }
 
 impl LZWDict {
@@ -15,32 +15,22 @@ impl LZWDict {
             lexeme_index: HashMap::new()
         }
     }
-    fn insert(&mut self, key:usize, value:Vec<u8>) {
+    fn insert(&mut self, key:usize, value:Vec<u64>) {
         &self.index_lexeme.insert(key, value.clone());
         &self.lexeme_index.insert(value, key);
     }
-    fn find_n_fill_inital_alph(&mut self, msg:&[u8]) {
-        let mut set:HashSet<u8> = HashSet::new();
-        for c in msg.iter() {
-            set.insert(*c);
-        }
-        let mut vec:Vec<u8> = Vec::with_capacity(set.len());
-        for c in set.drain() {
-            vec.push(c);
-        }
-        vec.sort();
-        for (index, c) in vec.drain(0..).enumerate() {
-            println!("Inserting: {:?}", c);
-            &self.insert(index, vec![c]);
+    fn fill_inital_alph(&mut self, k: u64) {
+        for i in 0..(u64::pow(2, k as u32)) {
+            self.insert(i as usize, vec![i]);
         }
     }
-    fn get_index(&self, symbol: Vec<u8>) -> Option<&usize> {
+    fn get_index(&self, symbol: Vec<u64>) -> Option<&usize> {
         self.lexeme_index.get(&symbol)
     }
-    fn get_lexeme(&self, index:usize) -> Option<&Vec<u8>> {
+    fn get_lexeme(&self, index:usize) -> Option<&Vec<u64>> {
         self.index_lexeme.get(&index)
     }
-    fn get_maximum_match(&mut self, slice:&[u8]) -> [usize; 2] {
+    fn get_maximum_match(&mut self, slice:Vec<u64>) -> [usize; 2] {
         let mut pointer:usize = 0;
         let mut offset :usize = 0;
         for i in 0..slice.len() {
@@ -84,45 +74,60 @@ fn concat_array_u8_u64(array: &[u8]) -> u64 {
 }
 
 fn convert_array_u8_u64(array: &[u8]) -> Vec<u64> {
-    let mut i:usize = 8;
+    let mut i:usize = 0;
     let mut vec: Vec<u64> = Vec::new();
+    let mut offset = i;
+    if array.len() == 0 {
+        return vec
+    }
     while i <= array.len() {
-        vec.push(concat_array_u8_u64(&array[(i - 8)..i]));
-        if (i + 8) > array.len() {
-            vec.push(concat_array_u8_u64(&array[i..]));
+        if (offset + 8) > array.len() {
+            vec.push(concat_array_u8_u64(&array[offset..]));
+        } else {
+            vec.push(concat_array_u8_u64(&array[offset..offset + 8]));
         }
         i += 8;
+        offset = i
     }
     return vec;
 }
 
 impl<'lifecycle> LZW<'lifecycle> for LZWData {
-    fn encode(msg: &'lifecycle[u8], k: u8) -> Self {
-        let mut codedmsg = BitLongVec::with_fixed_capacity(msg.len(), k);
+    fn encode(data: &'lifecycle[u8], k: u8) -> Self {
+        let l = data.len();
+        let msg_data:Vec<u64> = convert_array_u8_u64(&data);
+        let msg = BitLongVec::from_data(msg_data, l, k);
+        let mut codedmsg:BitLongVec = BitLongVec::with_fixed_capacity(l, k);
+
         let mut dict = LZWDict::new();
-        dict.find_n_fill_inital_alph(&msg);
-        let initial_dict = dict.clone();
+        dict.fill_inital_alph(k as u64);
 
         let mut index  :usize = 0;
         let mut pointer:usize = 0;
-        while pointer < msg.len() {
-            let slice: &[u8] = &msg[pointer..];
+        while pointer < l {
+            let mut slice = Vec::new();
+            for i in pointer..msg.capacity {
+                slice.push(msg.get(i));
+            }
+
             let result = dict.get_maximum_match(slice);
+            println!("{:?}", result);
             codedmsg.set(index, result[0] as u64);
             pointer += result[1];
-            index += 1
+            index += 1;
+            println!("{:?}", pointer);
         }
         LZWData {
-            dict: initial_dict,
+            dict: dict,
             codedmsg: codedmsg,
             sizemsg: index
         }
     }
     fn decode(codedmsg: &'lifecycle LZWData) -> &[u8]{
-        let mut data:Vec<u8> = Vec::new();
+        let mut data:Vec<u64> = Vec::new();
         let coded_data = &codedmsg.codedmsg;
         let dict = &codedmsg.dict;
-        let mut next:&[u8] = dict.get_lexeme(coded_data.get(0) as usize).unwrap();
+        let mut next:&[u64] = dict.get_lexeme(coded_data.get(0) as usize).unwrap();
         data.push(next[0]);
         for index in 1..codedmsg.sizemsg {
             println!("Value: {}", coded_data.get(index));
