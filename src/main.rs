@@ -3,7 +3,7 @@ use std::fs::File;
 use std::io::prelude::*;
 fn main() -> std::io::Result<()> {
     let msg: &[u8] = "abracadabra".as_bytes();
-    let k: u8 = 4; 
+    let k: u8 = 8; 
     let compressor:LZWData = LZW::encode(msg, k);
 
     let mut file = File::open("test.comp")?;
