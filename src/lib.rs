@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use bit_long_vec::BitLongVec;
 use serde::{Serialize, Deserialize};
 
@@ -62,8 +62,9 @@ impl LZWDict {
 
 pub trait LZW<'lifecycle> {
     fn encode(msg: &'lifecycle[u8], k: u8) -> Self;
-    fn decode(msg: &'lifecycle LZWData) -> &[u8];
+    fn decode(msg: &'lifecycle LZWData) -> Vec<u8>;
     fn codedmsg_ref(&self) -> &BitLongVec;
+    fn msg_size(&self) -> usize;
 }
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LZWData {
@@ -116,36 +117,41 @@ impl<'lifecycle> LZW<'lifecycle> for LZWData {
             let slice = &msg[pointer..];
 
             let result = dict.get_maximum_match(slice);
-            println!("{:?}", result);
-            println!("{:?}", dict.get_lexeme(result[0]));
+            //println!("{:?}", result);
+            //println!("{:?}", dict.get_lexeme(result[0]));
             codedmsg.set(index, result[0] as u64);
             pointer += result[1];
             index += 1;
-            println!("{:?}", pointer);
+            //println!("{:?}", pointer);
         }
-        println!("{:?}", dict);
+        //println!("{:?}", dict);
         LZWData {
             dict: dict,
             codedmsg: codedmsg,
             sizemsg: index
         }
     }
-    fn decode(codedmsg: &'lifecycle LZWData) -> &[u8]{
-//        let mut data:Vec<u64> = Vec::new();
-//      let coded_data = &codedmsg.codedmsg;
-  //      let dict = &codedmsg.dict;
-       // let mut next:&[u64] = dict.get_lexeme(coded_data.get(0) as usize).unwrap();
-        //data.push(next[0]);
-    //    for index in 1..codedmsg.sizemsg {
-      //      println!("Value: {}", coded_data.get(index));
-        //    let lexeme = dict.get_lexeme(coded_data.get(index) as usize).unwrap();
-   //         data.append(lexeme.to_vec());
-   //         next = [next, lexeme].concat();
-          //  println!("{:?}", lexeme);
-        //}
-        return &[1]
+    fn decode(codedmsg: &'lifecycle LZWData) -> Vec<u8> {
+        let mut data:Vec<u8> = Vec::new();
+        let coded_data = &codedmsg.codedmsg;
+        let dict = &codedmsg.dict;
+        let next:&[u8] = dict.get_lexeme(coded_data.get(0) as usize).unwrap();
+        data.push(next[0]);
+        for index in 1..codedmsg.sizemsg {
+            //println!("Value: {}", coded_data.get(index));
+            let lexeme = dict.get_lexeme(coded_data.get(index) as usize).unwrap();
+            data.extend_from_slice(lexeme.as_slice());
+            //println!("{:?}", lexeme);
+            //print!("\r{}%", ((index * 100) as f32 / codedmsg.sizemsg as f32));
+        }
+
+        return data
     }
     fn codedmsg_ref(&self) -> &BitLongVec {
         &&self.codedmsg
+    }
+
+    fn msg_size(&self) -> usize {
+        return self.sizemsg
     }
 }
