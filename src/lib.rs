@@ -130,8 +130,9 @@ impl<'lifecycle> LZW<'lifecycle> for LZWData {
             //println!("{:?}", pointer);
         }
         //println!("{:?}", dict);
+        let mut new = LZWDict::new();
         LZWData {
-            dict: dict,
+            dict: new,
             codedmsg: codedmsg,
             sizemsg: index
         }
@@ -176,7 +177,7 @@ impl<'lifecycle> LZW<'lifecycle> for LZWData {
         let mut decoded: Vec<u8> = Vec::new();
         let mut values: Vec<u64> = Vec::new();
         let mut aux: Vec<u8> = Vec::new();
-        aux.push(0);
+        //aux.push(0);
 
         let mut buffer = [0; 8];
         let mut buffer: Vec<u8> = Vec::new();
@@ -202,18 +203,22 @@ impl<'lifecycle> LZW<'lifecycle> for LZWData {
 
             values.push(val);
         }*/
+
         let values = BitLongVec::from_data(values.clone(), ((values.len() as f32 / k as f32) * 64.0 - 1.0).ceil() as usize, k);
 
         let mut dict: LZWDict = LZWDict::new();
         dict.fill_inital_alph();
         dict.set_maximum(usize::pow(2, k as u32));
-        let mut next_code = 257;
+        let mut next_code = 256;
         //println!("capacity: {}", values.capacity);
 
-        for i in 0..values.capacity {
+        for i in 0..(buffer.len() * 8 -1) / k as usize {
             let code = values.get(i) as usize;
             //println!("{}", code);
+            let aux_ = dict.get_lexeme(code);
+            println!("{} -> {:?}", code, aux_);
             if dict.get_lexeme(code).is_none() {
+                println!("{}", code);
                 aux.push(aux[0]);
                 dict.insert(code, aux.clone());
                 aux.pop();
@@ -222,6 +227,7 @@ impl<'lifecycle> LZW<'lifecycle> for LZWData {
             let lexeme = dict.get_lexeme(code as usize).unwrap();
             decoded.extend_from_slice(lexeme.as_slice());
 
+            println!("aux: {:?}, {}", aux, aux.len());
             if aux.len() != 0 {
                 aux.push(lexeme[0]);
                 dict.insert(next_code, aux.clone());
@@ -230,10 +236,8 @@ impl<'lifecycle> LZW<'lifecycle> for LZWData {
             }
 
             aux = dict.get_lexeme(code as usize).unwrap().to_vec();
-            /*if (next_code >= 350) {
-                break;
-            }*/
         }
+        println!("{:?}", String::from_utf8(decoded).unwrap());
 
         //let mut decoded_file = File::create("test.txt").unwrap();
         //decoded_file.write_all(decoded.as_slice());

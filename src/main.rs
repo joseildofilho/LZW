@@ -4,7 +4,7 @@ use std::io::prelude::*;
 use std::time::SystemTime;
 
 fn main() -> std::io::Result<()> {
-    let files = ["corpus16MB.txt", "mapa.mp4"];
+    let files = ["casa.txt"];
     for f in &files {
         println!("File:{}", f);
         for k in 9..=16 {
@@ -34,6 +34,7 @@ fn main() -> std::io::Result<()> {
             //let mut compressed = File::create(filename.clone())?;
             //compressed.write_all(s.unwrap().as_bytes());
             compressor.save_bin_file(&filename.clone());
+            LZWData::decode_bin_file(&filename, k);
             //return Ok(());
             now = SystemTime::now();
             LZWData::decode_bin_file(&filename, k);
