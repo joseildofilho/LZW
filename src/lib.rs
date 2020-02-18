@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use bit_long_vec::BitLongVec;
 use serde::{Serialize, Deserialize};
+use std::fs::File;
+use std::io::prelude::*;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct LZWDict {
@@ -43,6 +45,7 @@ impl LZWDict {
         let mut offset :usize = 0;
         for i in 0..slice.len() {
             let aux_slice = &slice[..i+1];
+            //println!("{:?}", aux_slice);
             match self.get_index(aux_slice.to_vec()) {
                 Some(x) => {
                     offset = aux_slice.len();
@@ -63,6 +66,8 @@ impl LZWDict {
 pub trait LZW<'lifecycle> {
     fn encode(msg: &'lifecycle[u8], k: u8) -> Self;
     fn decode(msg: &'lifecycle LZWData) -> Vec<u8>;
+    fn save_bin_file(&self, path: &str);
+    fn decode_bin_file(path: &str, k: u8);
     fn codedmsg_ref(&self) -> &BitLongVec;
     fn msg_size(&self) -> usize;
 }
@@ -153,5 +158,85 @@ impl<'lifecycle> LZW<'lifecycle> for LZWData {
 
     fn msg_size(&self) -> usize {
         return self.sizemsg
+    }
+
+    fn save_bin_file(&self, path: &str) {
+        let msg = &self.codedmsg;
+        let mut file = File::create(path).unwrap();
+        let mut val: u64 = 0;
+        for long in &msg.data {
+            if *long != 0 {
+                file.write_all(&long.to_le_bytes());
+            }
+        }
+    }
+
+    fn decode_bin_file(path: &str, k: u8) {
+        let mut file = File::open(path).unwrap();
+        let mut decoded: Vec<u8> = Vec::new();
+        let mut values: Vec<u64> = Vec::new();
+        let mut aux: Vec<u8> = Vec::new();
+        aux.push(0);
+
+        let mut buffer = [0; 8];
+        let mut buffer: Vec<u8> = Vec::new();
+        file.read_to_end(&mut buffer);
+        for i in (0..buffer.len()).step_by(8) {
+            let mut array: [u8; 8] = [0; 8];
+            array.copy_from_slice(&buffer[i..i+8]);
+            let val = u64::from_le_bytes(array);
+            //println!("{}", val);
+            values.push(val);
+        }
+        //println!("{}", values.len());
+        /*while file.read_exact(&mut buffer).is_ok() {
+            /*let val: u64 = (buffer[0] as u64) << (8 * 0) |
+            (buffer[1] as u64) << (8 * 1) |
+            (buffer[2] as u64) << (8 * 2) |
+            (buffer[3] as u64) << (8 * 3) |
+            (buffer[4] as u64) << (8 * 4) |
+            (buffer[5] as u64) << (8 * 5) |
+            (buffer[6] as u64) << (8 * 6) |
+            (buffer[7] as u64) << (8 * 7);*/
+            let val = u64::from_le_bytes(buffer);
+
+            values.push(val);
+        }*/
+        let values = BitLongVec::from_data(values.clone(), ((values.len() as f32 / k as f32) * 64.0 - 1.0).ceil() as usize, k);
+
+        let mut dict: LZWDict = LZWDict::new();
+        dict.fill_inital_alph();
+        dict.set_maximum(usize::pow(2, k as u32));
+        let mut next_code = 257;
+        //println!("capacity: {}", values.capacity);
+
+        for i in 0..values.capacity {
+            let code = values.get(i) as usize;
+            //println!("{}", code);
+            if dict.get_lexeme(code).is_none() {
+                aux.push(aux[0]);
+                dict.insert(code, aux.clone());
+                aux.pop();
+            }
+            
+            let lexeme = dict.get_lexeme(code as usize).unwrap();
+            decoded.extend_from_slice(lexeme.as_slice());
+
+            if aux.len() != 0 {
+                aux.push(lexeme[0]);
+                dict.insert(next_code, aux.clone());
+                aux.pop();
+                next_code += 1;
+            }
+
+            aux = dict.get_lexeme(code as usize).unwrap().to_vec();
+            /*if (next_code >= 350) {
+                break;
+            }*/
+        }
+
+        //let mut decoded_file = File::create("test.txt").unwrap();
+        //decoded_file.write_all(decoded.as_slice());
+        
     }
 }
