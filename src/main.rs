@@ -4,7 +4,7 @@ use std::io::prelude::*;
 use std::time::SystemTime;
 
 fn main() -> std::io::Result<()> {
-    let files = ["casa.txt"];
+    let files = ["corpus16MB.txt", "mapa.mp4"];
     for f in &files {
         println!("File:{}", f);
         for k in 9..=16 {
@@ -37,7 +37,7 @@ fn main() -> std::io::Result<()> {
             LZWData::decode_bin_file(&filename, k);
             //return Ok(());
             now = SystemTime::now();
-            LZWData::decode_bin_file(&filename, k);
+            let decoded = LZWData::decode_bin_file(&filename, k);
             //let decoded = LZWData::decode(&serialized);
             match now.elapsed() {
                 Ok(elapsed) => {
@@ -48,8 +48,9 @@ fn main() -> std::io::Result<()> {
                     println!("Error:{:?}", e);
                 }
             }
+            let mut decoded_file = File::create(format!("decompressed_{}_k{}.{}", aux[0], k, aux[1]))?;
+            decoded_file.write_all(decoded.as_slice());
             
-            //return Ok(());
             /*
             //println!("Encoding done.");
             //println!("Begin decoding...");
