@@ -2,6 +2,7 @@ use lzw::{LZW, LZWData};
 use std::fs::{read_dir, DirEntry, File};
 use std::io::Read;
 use std::collections::{HashMap};
+use std::time::SystemTime;
 
 fn main() -> std::io::Result<()> {
     let path = "data/orl_faces";
@@ -39,6 +40,7 @@ fn main() -> std::io::Result<()> {
     });
 
     for k in 9..=16 {
+       let mut now = SystemTime::now();
        let mut trained_dicts: HashMap<String, LZWData> = HashMap::new();
        training_data.iter().for_each(|tuple| {
            let label = tuple.0;
@@ -71,7 +73,7 @@ fn main() -> std::io::Result<()> {
            }
        });
     
-       println!("{}/{} k:{}", hits, test_data.len(), k);
+       println!("{}/{} k:{}, elapsed: {}", hits, test_data.len(), k, now.elapsed().unwrap().as_secs_f32());
     }
     Ok(())
 }
