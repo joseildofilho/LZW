@@ -1,7 +1,7 @@
 use lzw::{LZW, LZWData};
 use std::fs::{read_dir, DirEntry, File};
 use std::io::Read;
-use std::collections::HashMap;
+use std::collections::{HashMap};
 
 fn main() -> std::io::Result<()> {
     let path = "data/orl_faces";
@@ -12,7 +12,6 @@ fn main() -> std::io::Result<()> {
         let dir  = read_dir(path.to_owned() + "/" + tuple.0).unwrap();
         dir.for_each(|x| tuple.1.push(x.unwrap()));
     });
-    println!("{:#?}", map_folders);
 
     let mut training_data: HashMap<String, Vec<u8>> = HashMap::new();
     let mut test_data:     HashMap<String, Vec<u8>> = HashMap::new();
@@ -27,7 +26,7 @@ fn main() -> std::io::Result<()> {
             let path = last.path();
             let mut file = File::open(path).unwrap();
             file.read_to_end(&mut file_contents_test);
-            test_data.insert(last.file_name().into_string().unwrap(), file_contents_test);
+            test_data.insert(class.to_string(), file_contents_test);
 
             elements.iter().for_each(|file_path| {
                 let path = file_path.path();
@@ -35,21 +34,45 @@ fn main() -> std::io::Result<()> {
                 file.read_to_end(&mut file_contents_training);
             });
 
-            training_data.insert(last.file_name().into_string().unwrap(), file_contents_training);
+            training_data.insert(class.to_string(), file_contents_training);
         };
     });
 
-    let mut files_dicts: HashMap<String, LZWData> = HashMap::new();
-    training_data.iter().for_each(|tuple| {
-        let label = tuple.0;
-        let data  = tuple.1;
-
-        let compressor: LZWData = LZW::encode(&data, 9);
-        files_dicts.insert(label.clone(), compressor);
-    });
-
+    for k in 9..=16 {
+       let mut trained_dicts: HashMap<String, LZWData> = HashMap::new();
+       training_data.iter().for_each(|tuple| {
+           let label = tuple.0;
+           let data  = tuple.1;
+        
+           let compressor: LZWData = LZW::encode(&data, k);
+           //compressor.dict.set_maximum(1);
+           trained_dicts.insert(label.clone(), compressor);
+       });
+       println!();
+       let mut hits = 0;
+       test_data.iter().for_each(|tuple| {
+           let label = tuple.0;
+           let test_data  = tuple.1;
+        
+           let mut min: usize = usize::max_value();
+           let mut label_min: String = String::new();
+           trained_dicts.iter().for_each(|trained_tuple| {
+               let trained_dict_label = trained_tuple.0;
+               let trained_dict = trained_tuple.1;
+               let x: LZWData = LZW::encode_with_dict(test_data, k, trained_dict.dict.to_owned());
+               if x.msg_size() < min {
+                   min = x.msg_size();
+                   label_min = trained_dict_label.to_owned();
+               }
+           });
+           let hit = *label == label_min;
+           if hit {
+               hits += 1
+           }
+       });
     
-
+       println!("{}/{} k:{}", hits, test_data.len(), k);
+    }
     Ok(())
 }
     /*

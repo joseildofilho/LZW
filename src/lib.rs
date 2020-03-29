@@ -5,7 +5,7 @@ use std::fs::File;
 use std::io::prelude::*;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-struct LZWDict {
+pub struct LZWDict {
     index_lexeme: HashMap<usize, Vec<u8>>,
     lexeme_index: HashMap<Vec<u8>, usize>,
     size   : usize,
@@ -28,7 +28,7 @@ impl LZWDict {
         self.size += 1;
     }
 
-    fn set_maximum(&mut self, k: usize) {
+    pub fn set_maximum(&mut self, k: usize) {
         self.maximum = k
     }
 
@@ -72,6 +72,7 @@ impl LZWDict {
 
 pub trait LZW<'lifecycle> {
     fn encode(msg: &'lifecycle[u8], k: u8) -> Self;
+    fn encode_with_dict(msg: &'lifecycle[u8], k: u8, dict: LZWDict) -> Self;
     fn decode(msg: &'lifecycle LZWData) -> Vec<u8>;
     fn save_bin_file(&self, path: &str);
     fn decode_bin_file(path: &str, k: u8) -> Vec<u8>;
@@ -81,19 +82,24 @@ pub trait LZW<'lifecycle> {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LZWData {
-    dict    : LZWDict,
+    pub dict: LZWDict,
     codedmsg: BitLongVec,
     sizemsg: usize
 }
 
 impl<'lifecycle> LZW<'lifecycle> for LZWData {
     fn encode(msg: &'lifecycle[u8], k: u8) -> Self {
-        let mut codedmsg:BitLongVec = BitLongVec::with_fixed_capacity(msg.len(), k);
 
         let mut dict = LZWDict::new();
         dict.fill_inital_alph();
         dict.set_maximum(usize::pow(2,k as u32));
+        Self::encode_with_dict(msg, k, dict)
+    }
 
+    fn encode_with_dict(msg: &'lifecycle[u8], k: u8, dict: LZWDict) -> Self {
+        let mut dict = dict;
+        let mut codedmsg:BitLongVec = BitLongVec::with_fixed_capacity(msg.len(),k);
+        f64::log(10.0, 2.0) as u8;
         let mut index  :usize = 0;
         let mut pointer:usize = 0;
         while pointer < msg.len() {
@@ -103,9 +109,8 @@ impl<'lifecycle> LZW<'lifecycle> for LZWData {
             codedmsg.set(index, result[0] as u64);
             pointer += result[1];
             index += 1;
-        }
-
-        LZWData {
+        };
+        Self {
             dict: dict,
             codedmsg: codedmsg,
             sizemsg: index
