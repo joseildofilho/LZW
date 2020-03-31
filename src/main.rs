@@ -3,19 +3,34 @@ use std::fs::{read_dir, DirEntry, File};
 use std::io::Read;
 use std::collections::{HashMap};
 use std::time::SystemTime;
+use rand::Rng;
 
 fn main() -> std::io::Result<()> {
     let path = "data/orl_faces";
     let folder = read_dir(&path)?;
+    let test_class = rand::thread_rng().gen_range(1, 41);
+    let test_sample = rand::thread_rng().gen_range(1, 11);
     let mut map_folders:HashMap<String, Vec<DirEntry>> = HashMap::new();
     folder.for_each(|x| { map_folders.insert(x.unwrap().file_name().into_string().unwrap(), Vec::new());});
     map_folders.iter_mut().for_each(|tuple| {
         let dir  = read_dir(path.to_owned() + "/" + tuple.0).unwrap();
         dir.for_each(|x| tuple.1.push(x.unwrap()));
     });
+    let mut test = map_folders.get_mut(&format!("s{}", test_class)).unwrap();
+    let mut test_file = test[0].path();
+    for i in 0..test.len() {
+        if test[i].path().to_str().unwrap().contains(&format!("{}.pgm", test_sample)) {
+            test_file = test.remove(i).path();
+            break;
+        };
+    }
 
     let mut training_data: HashMap<String, Vec<u8>> = HashMap::new();
+    let mut test_file = File::open(test_file).unwrap();
+    let mut test = vec![];
+    test_file.read_to_end(&mut test);
     let mut test_data:     HashMap<String, Vec<u8>> = HashMap::new();
+    test_data.insert(format!("s{}", test_class), test);
 
     // Loads the data to these Maps above.
     map_folders.iter().for_each(|tuple| {
@@ -23,11 +38,6 @@ fn main() -> std::io::Result<()> {
         let files_path = tuple.1;
         if let Some((last, elements)) = files_path.split_last() {
             let mut file_contents_training = vec![];
-            let mut file_contents_test = vec![];
-            let path = last.path();
-            let mut file = File::open(path).unwrap();
-            file.read_to_end(&mut file_contents_test);
-            test_data.insert(class.to_string(), file_contents_test);
 
             elements.iter().for_each(|file_path| {
                 let path = file_path.path();
@@ -68,6 +78,7 @@ fn main() -> std::io::Result<()> {
                }
            });
            let hit = *label == label_min;
+           println!("Got {}, expected {}", label_min, label);
            if hit {
                hits += 1
            }
